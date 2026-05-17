@@ -1,0 +1,20 @@
+{
+  "name": "xinxi-server",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch server.js",
+    "start": "node server.js",
+    "db:push": "npx prisma db push",
+    "db:studio": "npx prisma studio"
+  },
+  "dependencies": {
+    "@fastify/cors": "^9.0.0",
+    "@prisma/client": "^5.0.0",
+    "fastify": "^4.0.0",
+    "jsonwebtoken": "^9.0.0"
+  },
+  "devDependencies": {
+    "prisma": "^5.0.0"
+  }
+}

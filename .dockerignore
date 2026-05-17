@@ -1,0 +1,8 @@
+node_modules/
+prisma/xinxi.db
+prisma/migrations/
+.env
+.git/
+Dockerfile
+container.yaml
+*.md

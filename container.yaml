@@ -1,0 +1,34 @@
+# 微信云托管部署配置
+# 文档：https://developers.weixin.qq.com/miniprogram/dev/wxcloud/guide/container/
+
+name: xinxi-server
+version: 1.0.0
+
+container:
+  # Dockerfile 所在目录
+  path: ./
+  
+  # 服务端口（容器内）
+  port: 80
+  
+  # 环境变量（敏感值在云托管控制台设置）
+  env:
+    - name: NODE_ENV
+      value: production
+    - name: JWT_SECRET
+      value: ""  # 在控制台填随机字符串
+    - name: WX_APPID
+      value: ""  # 小程序 AppID
+    - name: WX_SECRET
+      value: ""  # 小程序 AppSecret
+    - name: DATABASE_URL
+      value: ""  # 云托管 MySQL 连接串，控制台自动注入 MYSQL_URL
+
+  # 资源配置
+  cpu: 0.25     # 核，最低 0.25
+  mem: 0.5      # GB，最低 0.5
+  minNum: 0     # 最小实例（0 = 无请求时缩容，省钱）
+  maxNum: 3     # 最大实例
+
+  # 日志
+  logType: json

@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+model User {
+  id        String    @id @default(uuid())
+  openid    String    @unique
+  nickname  String?
+  avatar    String?
+  mbti      String?
+  relation  String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  moods       Mood[]
+  bonds       Bond[]
+  sentMsgs    Message[] @relation("sent")
+  recvMsgs    Message[] @relation("recv")
+}
+
+model Mood {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  mood      String
+  lakeState String
+  note      String?
+  createdAt DateTime @default(now())
+}
+
+model Bond {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  name      String
+  relation  String
+  type      String
+  silent    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  fromUserId String
+  toUserId   String
+  text       String
+  status     String   @default("pending")
+  createdAt  DateTime @default(now())
+
+  fromUser User @relation("sent", fields: [fromUserId], references: [id])
+  toUser   User @relation("recv", fields: [toUserId], references: [id])
+}
