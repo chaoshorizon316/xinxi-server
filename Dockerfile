@@ -1,5 +1,8 @@
 FROM node:20-alpine
 
+# Prisma 需要 OpenSSL
+RUN apk add --no-cache openssl
+
 WORKDIR /app
 
 # 依赖层（含 Prisma CLI 用于 generate + db push）
@@ -18,6 +21,5 @@ EXPOSE 8080
 ENV PORT=8080
 ENV NODE_ENV=production
 
-# 启动：数据库迁移 → 启动服务
-# DATABASE_URL 由云托管自动注入（MYSQL_URL → DATABASE_URL 映射在 server.js 中处理）
-CMD ["sh", "-c", "npx prisma db push --accept-data-loss && node server.js"]
+# 启动：MYSQL_URL → DATABASE_URL → 数据库迁移 → 启动服务
+CMD ["sh", "-c", "export DATABASE_URL=${MYSQL_URL:-$DATABASE_URL} && npx prisma db push --accept-data-loss && node server.js"]
