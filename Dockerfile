@@ -14,8 +14,8 @@ RUN npx prisma generate
 COPY server.js .
 
 # 容器配置
-EXPOSE 80
-ENV PORT=80
+EXPOSE 8080
+ENV PORT=8080
 ENV NODE_ENV=production
 
 # 启动：数据库迁移 → 启动服务
