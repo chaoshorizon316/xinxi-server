@@ -48,6 +48,7 @@ app.post('/api/login', async (req, reply) => {
   }
 
   const token = jwt.sign({ userId: user.id, openid }, JWT_SECRET, { expiresIn: '30d' })
+  console.log('[login] JWT签发成功', 'secret前4位:', JWT_SECRET.slice(0,4), 'userId:', user.id)
   return { token, user: { id: user.id, nickname: user.nickname, avatar: user.avatar, mbti: user.mbti, relation: user.relation } }
 })
 
@@ -55,13 +56,14 @@ app.post('/api/login', async (req, reply) => {
 // 认证中间件
 // ============================================================
 async function auth(req, reply) {
-  const auth = req.headers.authorization
-  if (!auth || !auth.startsWith('Bearer '))
+  const authHeader = req.headers.authorization
+  if (!authHeader || !authHeader.startsWith('Bearer '))
     return reply.code(401).send({ error: '未登录' })
   try {
-    const payload = jwt.verify(auth.slice(7), JWT_SECRET)
+    const payload = jwt.verify(authHeader.slice(7), JWT_SECRET)
     req.userId = payload.userId
-  } catch {
+  } catch (e) {
+    console.error('[auth] JWT验证失败', e.message, 'JWT_SECRET前4位:', JWT_SECRET.slice(0,4))
     return reply.code(401).send({ error: '登录过期' })
   }
 }
