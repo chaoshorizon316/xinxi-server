@@ -179,10 +179,22 @@ app.put('/api/messages/:id/reject', { preHandler: auth }, async (req) => {
 app.get('/api/debug', async () => ({
   jwt_secret_len: JWT_SECRET.length,
   jwt_secret_prefix: JWT_SECRET.slice(0, 6),
+  jwt_secret_charCodes: [...JWT_SECRET].slice(0, 8).map(c => c.charCodeAt(0)),
   wx_appid_set: !!WX_APPID,
   wx_secret_set: !!WX_SECRET,
   env_keys: Object.keys(process.env).filter(k => k.includes('JWT') || k.includes('WX') || k.includes('MYSQL') || k.includes('DATA')),
 }))
+
+// 调试：接收一个 token，用服务器的 JWT_SECRET 验证
+app.post('/api/debug/verify', async (req) => {
+  const { token } = req.body
+  try {
+    const payload = jwt.verify(token, JWT_SECRET)
+    return { ok: true, payload }
+  } catch (e) {
+    return { ok: false, error: e.message, secret_prefix: JWT_SECRET.slice(0,6) }
+  }
+})
 
 // ============================================================
 // 健康检查
