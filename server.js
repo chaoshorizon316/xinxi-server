@@ -188,11 +188,25 @@ app.get('/api/debug', async () => ({
 // 调试：接收一个 token，用服务器的 JWT_SECRET 验证
 app.post('/api/debug/verify', async (req) => {
   const { token } = req.body
+  console.log('[debug/verify] 收到token长度:', token?.length, '前20:', token?.slice(0,20))
   try {
     const payload = jwt.verify(token, JWT_SECRET)
     return { ok: true, payload }
   } catch (e) {
-    return { ok: false, error: e.message, secret_prefix: JWT_SECRET.slice(0,6) }
+    return { ok: false, error: e.message, secret_prefix: JWT_SECRET.slice(0,6), token_len: token?.length }
+  }
+})
+
+// 调试：服务器自己签发+验证（同一次调用）
+app.get('/api/debug/selftest', async () => {
+  const testPayload = { test: true, ts: Date.now() }
+  const signed = jwt.sign(testPayload, JWT_SECRET, { expiresIn: '1h' })
+  console.log('[debug/selftest] 签发token长度:', signed.length)
+  try {
+    const verified = jwt.verify(signed, JWT_SECRET)
+    return { ok: true, signed_len: signed.length, verified: verified, secret_prefix: JWT_SECRET.slice(0,6) }
+  } catch (e) {
+    return { ok: false, error: e.message, signed_len: signed.length, secret_prefix: JWT_SECRET.slice(0,6) }
   }
 })
 
