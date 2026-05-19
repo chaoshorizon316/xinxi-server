@@ -174,6 +174,17 @@ app.put('/api/messages/:id/reject', { preHandler: auth }, async (req) => {
 })
 
 // ============================================================
+// 调试端点（仅开发用，上线前移除）
+// ============================================================
+app.get('/api/debug', async () => ({
+  jwt_secret_len: JWT_SECRET.length,
+  jwt_secret_prefix: JWT_SECRET.slice(0, 6),
+  wx_appid_set: !!WX_APPID,
+  wx_secret_set: !!WX_SECRET,
+  env_keys: Object.keys(process.env).filter(k => k.includes('JWT') || k.includes('WX') || k.includes('MYSQL') || k.includes('DATA')),
+}))
+
+// ============================================================
 // 健康检查
 // ============================================================
 app.get('/api/health', async () => ({ ok: true, time: new Date().toISOString() }))
