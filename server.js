@@ -176,6 +176,17 @@ app.put('/api/messages/:id/reject', { preHandler: auth }, async (req) => {
 // ============================================================
 app.get('/api/health', async () => ({ ok: true, time: new Date().toISOString() }))
 
+
+// 环境诊断（上线前移除）
+app.get("/api/diag", async () => ({
+  wx_appid_set: !!(process.env.WX_APPID),
+  wx_appid_len: (process.env.WX_APPID || "").length,
+  wx_secret_set: !!(process.env.WX_SECRET),
+  wx_secret_len: (process.env.WX_SECRET || "").length,
+  jwt_set: !!(process.env.JWT_SECRET),
+  jwt_len: (process.env.JWT_SECRET || "").length,
+  node_env: process.env.NODE_ENV || "not set"
+}));
 // 启动
 const PORT = process.env.PORT || 3456
 await app.listen({ port: PORT, host: '0.0.0.0' })
