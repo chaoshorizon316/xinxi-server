@@ -25,7 +25,8 @@ app.post('/api/login', async (req, reply) => {
 
   // 开发模式：跳过微信 code2session
   let openid = code
-  if (WX_APPID && WX_SECRET && code) {
+  const hasCredentials = WX_APPID && WX_SECRET
+  if (hasCredentials && code) {
     try {
       const r = await fetch(
         `https://api.weixin.qq.com/sns/jscode2session?appid=${WX_APPID}&secret=${WX_SECRET}&js_code=${code}&grant_type=authorization_code`
@@ -34,7 +35,8 @@ app.post('/api/login', async (req, reply) => {
       if (data.openid) openid = data.openid
       else return reply.code(400).send({ error: '登录失败', detail: data })
     } catch (e) {
-      // 开发模式 fallback
+      // 生产模式不静默回退
+      return reply.code(502).send({ error: "微信服务暂不可用" })
     }
   }
 
