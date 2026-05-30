@@ -35,14 +35,15 @@ model Mood {
 }
 
 model Bond {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  name      String
-  relation  String
-  type      String
-  silent    Boolean  @default(false)
-  createdAt DateTime @default(now())
+  id         String   @id @default(uuid())
+  userId     String
+  bondUserId String?
+  user       User     @relation(fields: [userId], references: [id])
+  name       String
+  relation   String
+  type       String
+  silent     Boolean  @default(false)
+  createdAt  DateTime @default(now())
 }
 
 model Message {

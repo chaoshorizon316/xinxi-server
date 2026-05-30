@@ -11,7 +11,7 @@ container:
 
   cpu: 0.25
   mem: 0.5
-  minNum: 0
+  minNum: 1
   maxNum: 3
 
   logType: json

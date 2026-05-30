@@ -4,7 +4,6 @@ import jwt from 'jsonwebtoken'
 import { PrismaClient } from '@prisma/client'
 
 // 云托管会注入 MYSQL_URL，自动切换 MySQL
-// 本地开发用 .env 里的 DATABASE_URL=file:./xinxi.db
 if (process.env.MYSQL_URL && !process.env.DATABASE_URL) {
   process.env.DATABASE_URL = process.env.MYSQL_URL
 }
@@ -23,7 +22,6 @@ await app.register(cors)
 app.post('/api/login', async (req, reply) => {
   const { code, nickname, avatar } = req.body
 
-  // 开发模式：跳过微信 code2session
   let openid = code
   const hasCredentials = WX_APPID && WX_SECRET
   if (hasCredentials && code) {
@@ -35,7 +33,6 @@ app.post('/api/login', async (req, reply) => {
       if (data.openid) openid = data.openid
       else return reply.code(400).send({ error: '登录失败', detail: data })
     } catch (e) {
-      // 生产模式不静默回退
       return reply.code(502).send({ error: "微信服务暂不可用" })
     }
   }
@@ -57,11 +54,11 @@ app.post('/api/login', async (req, reply) => {
 // 认证中间件
 // ============================================================
 async function auth(req, reply) {
-  const auth = req.headers.authorization
-  if (!auth || !auth.startsWith('Bearer '))
+  const authHeader = req.headers.authorization
+  if (!authHeader || !authHeader.startsWith('Bearer '))
     return reply.code(401).send({ error: '未登录' })
   try {
-    const payload = jwt.verify(auth.slice(7), JWT_SECRET)
+    const payload = jwt.verify(authHeader.slice(7), JWT_SECRET)
     req.userId = payload.userId
   } catch {
     return reply.code(401).send({ error: '登录过期' })
@@ -105,7 +102,7 @@ app.get('/api/moods', { preHandler: auth }, async (req) => {
 })
 
 // ============================================================
-// 湖面状态（基于今日心情推算）
+// 湖面状态
 // ============================================================
 app.get('/api/lake-state', { preHandler: auth }, async (req) => {
   const today = new Date(); today.setHours(0, 0, 0, 0)
@@ -113,15 +110,13 @@ app.get('/api/lake-state', { preHandler: auth }, async (req) => {
     where: { userId: req.userId, createdAt: { gte: today } },
     orderBy: { createdAt: 'desc' }
   })
-  const state = moods.length >= 5 ? 'ripples'
-    : moods.length >= 2 ? 'breeze'
-    : moods.length >= 1 ? 'breeze'
-    : 'mirror'
+  const count = moods.length
+  const state = count >= 5 ? 'ripples' : count >= 3 ? 'breeze' : 'mirror'
 
-  const moodList = ['平静', '开心', '疲惫', '焦虑', '低落', '充满活力']
-  const insight = moods.length === 0
+  const hasNegative = moods.some(m => m.mood === '低落' || m.mood === '焦虑')
+  const insight = count === 0
     ? '今天还没有投下石子，湖面如镜，波澜不惊。'
-    : moods.some(m => m.mood === '低落' || m.mood === '焦虑')
+    : hasNegative
     ? '湖面有些波澜——今天的心情不是风平浪静，但涟漪终会散去。'
     : '今日湖面映照着你的心情，微风拂过，泛起浅浅涟漪。'
 
@@ -132,9 +127,56 @@ app.get('/api/lake-state', { preHandler: auth }, async (req) => {
 // 羁绊
 // ============================================================
 app.get('/api/bonds', { preHandler: auth }, async (req) => {
-  return prisma.bond.findMany({ where: { userId: req.userId }, orderBy: { createdAt: 'asc' } })
+  const bonds = await prisma.bond.findMany({
+    where: { userId: req.userId },
+    orderBy: { createdAt: 'asc' }
+  })
+  return bonds
 })
 
+// 通过分享建立羁绊
+app.post('/api/bonds/share', { preHandler: auth }, async (req) => {
+  const { fromUserId } = req.body
+  if (!fromUserId) return reply.code(400).send({ error: '缺少分享来源' })
+  if (fromUserId === req.userId) return { alreadyLinked: true }
+
+  // 查来源用户
+  const fromUser = await prisma.user.findUnique({ where: { id: fromUserId } })
+  if (!fromUser) return reply.code(404).send({ error: '来源用户不存在' })
+
+  // 查当前用户
+  const me = await prisma.user.findUnique({ where: { id: req.userId } })
+
+  // 查是否已有羁绊
+  const existing = await prisma.bond.findFirst({
+    where: { userId: req.userId, bondUserId: fromUserId }
+  })
+  if (existing) return { alreadyLinked: true, bond: existing }
+
+  // 双向创建羁绊
+  const bondA = await prisma.bond.create({
+    data: {
+      userId: req.userId,
+      bondUserId: fromUserId,
+      name: fromUser.nickname || '守望者',
+      relation: '朋友',
+      type: '守护光点'
+    }
+  })
+  const bondB = await prisma.bond.create({
+    data: {
+      userId: fromUserId,
+      bondUserId: req.userId,
+      name: me.nickname || '守望者',
+      relation: '朋友',
+      type: '守护光点'
+    }
+  })
+
+  return { linked: true, bond: bondA }
+})
+
+// 手动创建羁绊（保留，用于添加非分享来源的联系）
 app.post('/api/bonds', { preHandler: auth }, async (req) => {
   const { name, relation, type, silent } = req.body
   return prisma.bond.create({
@@ -177,19 +219,15 @@ app.put('/api/messages/:id/reject', { preHandler: auth }, async (req) => {
 // 健康检查
 // ============================================================
 app.get('/api/health', async () => ({ ok: true, time: new Date().toISOString() }))
-
-
-// 环境诊断（上线前移除）
 app.get("/api/diag", async () => ({
   wx_appid_set: !!(process.env.WX_APPID),
   wx_appid_len: (process.env.WX_APPID || "").length,
   wx_secret_set: !!(process.env.WX_SECRET),
   wx_secret_len: (process.env.WX_SECRET || "").length,
   jwt_set: !!(process.env.JWT_SECRET),
-  jwt_len: (process.env.JWT_SECRET || "").length,
   node_env: process.env.NODE_ENV || "not set"
-}));
-// 启动
+}))
+
 const PORT = process.env.PORT || 3456
 await app.listen({ port: PORT, host: '0.0.0.0' })
 console.log(`心汐 API → http://localhost:${PORT}`)
